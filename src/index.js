@@ -1,98 +1,95 @@
 document.addEventListener("DOMContentLoaded", () => {
-const addBtn = document.querySelector('#new-toy-btn')
-const toyForm = document.querySelector('.container')
-let addToy = false
+  const addBtn = document.querySelector('#new-toy-btn')
+  const toyForm = document.querySelector('.container')
+  let addToy = false
 
 // YOUR CODE HERE
-//step 2 and step 3;
-const toyContainerToAppendToyCards = document.querySelector("#toy-collection")
 
-fetch('http://localhost:3000/toys', {
-  method: 'GET'
-})
-  .then(response => response.json())
-  .then(toyData => {
-    // console.log(toyData)
-    const toyCardHTMLString = toyData.map(/*FUNCTION*/(toyJSONObject) => {
-      const newToyObj = new Toy(toyJSONObject)
-      return newToyObj.render();
-    })
-    toyContainerToAppendToyCards.innerHTML = toyCardHTMLString.join('')
-
+  addBtn.addEventListener('click', () => {
+    // hide & seek with the form
+    addToy = !addToy
+    if (addToy) {
+      toyForm.style.display = 'block'
+      // submit listener here
+    } else {
+      toyForm.style.display = 'none'
+    }
   })
 
+//step 2 and step 3, get;
+  fetch("http://localhost:3000/toys")
+  .then(r => r.json())
+  .then(toyData => {
+    document.getElementById("toy-collection").innerHTML = toyData.map(toy => {
+      let newToy = new Toy(toy);
+      return newToy.render();
+    }).join("")
+  })
 
-addBtn.addEventListener('click', () => {
-  // hide & seek with the form
-  addToy = !addToy
-  if (addToy) {
-    toyForm.style.display = 'block'
-    // submit listener here
-  } else {
-    toyForm.style.display = 'none'
-  }
-})
+//step 4, post;
+  const newToy = document.getElementsByClassName("add-toy-form")[0];
 
-//step 4;
-const addNewToyHandler = document.querySelector(".add-toy-form");
-// console.log("HTML:", addNewToyHandler)
-addNewToyHandler.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const newToyInputNameValue = event.target.querySelector('#input-name').value
-  const newToyInputImageValue = event.target.querySelector('#input-image').value
+  newToy.addEventListener("submit", (event) => {
+    debugger
+    event.preventDefault();
+    let inputName = event.target.querySelector("#input-name").value;
+    let inputImage = event.target.querySelector("#input-image").value;
 
-  // console.log("inputName:", newToyInputNameValue);
-  // console.log("inputImage:", newToyInputImageValue);
-
-  fetch('http://localhost:3000/toys', {
-    method: 'POST', //which HTTP verb am i using
-    headers: {
-      'Accept': 'application/json', //i am expecting JSON back
-      'Content-Type': 'application/json' //i am sending you JSON
-    },
-    body: JSON.stringify({
-      //JSON object with data; in rails this will come through via params
-      name: newToyInputNameValue,
-      image: newToyInputImageValue,
-      likes: 0
+    fetch("http://localhost:3000/toys", {
+      method: "POST",
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: inputName,
+        image: inputImage,
+        likes: 0
+      })
+    }).then(r => r.json())
+    .then(toy => {
+      let newToy = new Toy(toy);
+      document.getElementById("toy-collection").innerHTML += newToy.render()
     })
-  }).then(response => response.json())
-    .then(jsonToy => {
-      // create a new JS object with the data sent from the server
-      const newlyCreatedToy = new Toy(jsonToy)
-      // render that newly created pokemon
-      // console.log(newlyCreatedToy.render());
-      toyContainerToAppendToyCards.innerHTML += newlyCreatedToy.render()
-    })
+    event.target.reset();
+  })
 
-  event.target.reset() //clear the form
-})
+//step 5, likes;
+  const toyList = document.getElementById("toy-collection");
 
-//step 5;
+  toyList.addEventListener("click", (event) => {
+    if (event.target.className === "like-btn"){
+      let toyId = event.target.id.split("-")[2];
+      let targetToy = Toy.findById(toyId);
+      targetToy.likes++;
 
-toyContainerToAppendToyCards.addEventListener("click", (event) => {
-  // if (event.target.className === "like-btn"){
-    let toyName = event.target.id;
-    fetch("http://localhost:3000/toys/")
-    .then(response => response.json())
-    .then(toyData => {
-      let toyObj = toyData.find((toyObj) => toyObj.name === toyName)
-      toyObj.likes += 1;
-      fetch(`http://localhost:3000/toys/${toyObj.id}`, {
+      fetch(`http://localhost:3000/toys/${toyId}`, {
         method: "PATCH",
         headers: {
-          'Accept': 'application/json', //i am expecting JSON back
-          'Content-Type': 'application/json' //i am sending you JSON
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          likes: toyObj.likes
+          likes: targetToy.likes
         })
+      }).then(r => r.json())
+      .then(toy => {
+        document.getElementById(`like-${toy.id}`).innerText = `${toy.likes} Likes`
       })
-      console.log(toyObj);
+    }
+  })
 
-      let likeP = document.getElementById(`toy-${toyObj.id}`)
-      likeP.innerText = `${toyObj.likes} likes`
-    })
-  // }
-})
+//step 6, delete;
+  toyList.addEventListener("click", (event) => {
+    if (event.target.className === "delete-btn"){
+      let toyId = event.target.id.split("-")[2];
+      let targetToy = Toy.findById(toyId);
+
+      fetch(`http://localhost:3000/toys/${toyId}`, {
+        method: "DELETE"
+      })
+      document.querySelector(`[data-id="${toyId}"]`).remove()
+    }
+  })
+
 })
